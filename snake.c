@@ -60,9 +60,28 @@ void init_snake(){
 }
 
 void increase_snake(){
-  Snake *new = malloc(sizeof(Snake));
-  new->x = tail->x;
-  new->y = tail->y -1;
+    Snake *new = malloc(sizeof(Snake));
+
+    switch(tail->dir) {
+    case SNAKE_UP:
+	new->x = tail->x;
+	new->y = tail->y + 1;
+	break;
+    case SNAKE_DOWN:
+	new->x = tail->x;
+	new->y = tail->y - 1;
+	break;
+    case SNAKE_LEFT:
+	new->x = tail->x - 1;
+	new->y = tail->y;
+	break;
+    case SNAKE_RIGHT:
+	new->x = tail->x + 1;
+	new->y = tail->y;
+	break;
+    }
+
+
   new->dir = tail->dir;
 
   new->next = NULL;
@@ -76,7 +95,8 @@ void move_snake(){
 
   int prev_x = head->x;
   int prev_y = head->y;
-
+  int prev_dir = head->dir;
+  
   switch(head->dir){
   case SNAKE_UP:
     head->y--;
@@ -103,18 +123,41 @@ void move_snake(){
 
     int save_x = track->x;
     int save_y = track->y;
+    int save_dir = track->dir;
 
     track->x = prev_x;
     track->y = prev_y;
+    track->dir = prev_dir;
     
     track = track->next;
 
     prev_x = save_x;
     prev_y = save_y;
+    prev_dir = save_dir;
   }
 
   return;
 }
+
+void reset_snake()
+{
+    Snake *track = head;
+    Snake *temp;
+
+    while(track != NULL){
+	temp = track;
+	track = track->next;
+	free(temp);
+    }
+
+    init_snake();
+    increase_snake();
+    increase_snake();
+    increase_snake();
+
+    return;
+}
+
 
 void render_snake(SDL_Renderer *renderer , int x, int y){
   SDL_SetRenderDrawColor(renderer,0x11,0x11,0x11,255);
@@ -166,8 +209,25 @@ void render_grid(SDL_Renderer *renderer , int x , int y){
 
 
 void gen_apple(){
-  Apple.x = rand() % GRID_SIZE;
-  Apple.y = rand() % GRID_SIZE;
+
+    bool in_snake;
+
+    do {
+	in_snake = false;
+	Apple.x = rand() % GRID_SIZE;
+	Apple.y = rand() % GRID_SIZE;
+	
+
+	Snake *track = head;
+
+	while(track != NULL){
+	    if(track->x == Apple.x && track->y == Apple.y){
+		in_snake = true;
+	    }
+	    
+	    track = track->next;
+	}
+    }while(in_snake);
   
 }
 
@@ -198,6 +258,31 @@ void detect_apple(){
 
     return;
 }
+
+void detect_crash()
+{
+    if(head->x < 0 || head->x > GRID_SIZE - 1 || head->y < 0 || head->y > GRID_SIZE - 1)
+    {
+	reset_snake();
+    }
+
+    Snake *track = head;
+
+    if(track->next != NULL){
+	track = track->next;
+    }
+
+
+    while(track != NULL){
+	if(track->x == head->x && track->y == head->y){
+	    reset_snake();
+	}
+	track = track->next;
+    }
+
+    return;
+}
+
 
 int main()
 {
@@ -279,6 +364,8 @@ int main()
 
     move_snake();
     detect_apple();
+    detect_crash();
+
     
     render_grid(renderer,grid_x,grid_y);
     render_snake(renderer,grid_x,grid_y);
